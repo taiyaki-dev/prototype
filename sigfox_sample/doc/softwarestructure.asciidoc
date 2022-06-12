@@ -1,0 +1,206 @@
+// レイアウト
+:lang: ja
+:doctype: article
+:pdf-style: /home/dev/asciidoc_settings/themes/default-theme.yml
+:pdf-fontsdir: /home/dev/asciidoc_settings/fonts/
+
+// 目次
+:toc:
+:toclevels: 4
+:sectnums:
+:toc-title: 目次
+
+:imagesdir: assets/images
+
+= Sigfox サンプルプログラム　ソフトウェア機能仕様・構造設計書
+@taiyaki_dev
+v0.1.0, 2022-06-13
+
+== はじめに
+本ドキュメントはSigfoxモジュール サンプルコードの各機能仕様や処理シーケンスについてまとめたものである。
+
+NOTE: 本ドキュメントは"AsciiDoc"と呼ばれるマークアップ言語で記載を行っている。
+
+== システム概要
+=== Sigfoxとは
+SigfoxとはSub-GHz帯を使用するLPWAネットワークサービスの一種で、省電力かつ少量データを送信する用途で用いられることを想定した無線技術である。
+
+NOTE: LPWA = Low Power Wide Area（省電力広域無線技術）の略
+
+NOTE: Sigfoxとは、フランスのSigfox社が提供するネットワークサービスで、フランス以外の国では1国1事業者とオペレータ契約を結び、サービス展開を実施している。
+日本国内では京セラコミュニケーションシステム株式会社（KCCS）が電気通信事業者としてネットワーク構築、サービス展開を行っている。
+
+Sigfoxの無線仕様を下記に示す。
+
+.Sigfoxの無線仕様
+|===
+|項目 |上り |下り |備考
+|変調方式 |SBB-SC + D-BPSK |ISB + GFSK |
+|データ・レート |100bps |600bps |
+|ペイロード長 |12Byte |8Byte |
+|キャリア周波数 |923.2MHz |922.2MHz |日本国内で使用する場合のキャリア周波数（国ごとに使用周波数は若干異なる）
+|キャリア周波数帯幅 |100Hz |800Hz |
+|送信電力 |20mW以下 |250mW以下 |
+|1日の最大通信回数 |140回 |4回 |
+|===
+
+=== 動作環境
+Sigfoxのサンプルプログラムを動作させるデバイスや用いるサービスを下記に示す。
+
+.動作環境に用いるデバイス・サービス一覧
+|===
+| |デバイス・サービス構成 |動作概要
+|Sigfoxデバイス（エッジデバイス） |センサ + Arduino Uno + Sigfox Shield for Arduino (UnaShied V2S) |センサから取得したデータをArduinoを介して、Sigfox Shieldからデータ（バイナリ）を送る
+|Sigfox基地局 |SORACOM Air for Sigfox |エッジデバイスから送信されてきたデータをネットワークを介し、Sigfox Platform側に渡す
+|Sigfox Platform（サーバ） |SORACOM Platform "Harvest" |Sigfoxネットワークを介して送られてきたデータ（バイナリ）をParseし、データをJSON形式で出力する
+|===
+
+NOTE: Sigfox Shield for Arduinoに搭載されている通信モジュールチップは"WISOL WSSFM10R"
+
+=== 開発環境
+Sigfoxのサンプログラムを開発するのに用いる環境を下記に示す。
+
+.開発環境
+|===
+|IDE |Arduino IDE 1.8.13
+|開発言語 |C++
+|仕様ライブラリ |Arduino標準ライブラリ
+|===
+
+=== ATコマンド
+Sigfoxの通信モジュールチップの制御にはATコマンドが用いられる。以下に使用するコマンドを中心にATコマンド一覧を記載する。
+
+.ATコマンド一覧（抜粋）
+|===
+|設定項目 |ATコマンド |備考
+|エミュレータモードを有効にする |ATS410=1 |
+|エミュレータモードを無効にする |ATS410=0 |
+|Sigfox IDの取得 |AT$I=10 |
+|PACの取得 |AT$I=11 |
+|Uplinkの周波数設定 | AT$IF=923200000 |設定値は923.2MHz (RC3)
+|Downlinkの周波数設定 |AT$DR=922200000 |設定値は922.2MHz
+|設定の保存 |AT$WR |
+|メッセージの送信 |AT$SF=0123456789ab |送信文字列は最大12Byte、左記の場合は"0123456789ab"をバイナリ形式で送信する
+|===
+
+== 機能仕様
+=== 初期化機能
+* マイコンボードの電源投入（またはアプリケーション）後、データ送るために必要な設定をSigfoxモジュールに行う。
+
+.初期化時にSigfoxモジュールに設定する項目
+|===
+|設定項目 |設定 |備考
+|エミュレータモード |無効 |
+|Uplinkの周波数 |902MHz |
+|===
+
+=== メッセージ送信機能
+* Sigfoxモジュールに文字列データを渡し、Sigfoxネットワークを介して、サーバに送信する。
+
+=== 終了機能(T.B.D.)
+* 検討中（マイコンボード上で動かす際は不要？）
+
+== 構造設計
+=== 初期化機能
+==== API仕様
+[source, c++]
+----
+bool Initialize(void);
+----
+
+==== 内部シーケンス
+　初期化機能の内部処理シーケンスを下記に示す。
+
+. マイコンボードの電源投入（またはアプリケーションの起動）後、Main Programが実行される
+. Sigfoxクラスのインスタンスを生成する
+. Sigfoxモジュールのエミュレータモードを無効にする
+. Sigfox IDを取得する
+. PACを取得する
+. Uplinkの周波数を設定する
+
+.初期化機能のシーケンス
+[plantuml]
+----
+@startuml{Initialize.png}
+
+[-> Main : Power On or Execute Program
+activate Main
+hide footbox
+
+create Sigfox
+Main -> Sigfox : new
+activate Sigfox
+
+activate SigfoxModuleHW
+hide footbox
+
+Main -> Main : Wait a few second
+
+Main -> Sigfox : Initialize()
+Sigfox -> SigfoxModuleHW : Emulation Mode "Disable"
+Sigfox -> SigfoxModuleHW : Get "Sigfox ID"
+SigfoxModuleHW -> Sigfox : "Sigfox ID"
+Sigfox -> SigfoxModuleHW : Get "PAC"
+SigfoxModuleHW -> Sigfox : "PAC"
+Sigfox -> SigfoxModuleHW : Set Uplink "RC3"
+Sigfox -> Main : return
+
+@enduml
+----
+
+=== メッセージ送信機能
+==== API仕様
+[source, c++]
+----
+bool SendMessage(const String message);
+----
+
+==== 内部シーケンス
+メッセージ送信機能の内部処理シーケンスを下記に示す。
+
+. Main Programから送信したいメッセージを受け取る
+. 受け取ったメッセージのサイズをチェックする
+.. 12Byteよりも大きい場合は、falseを返す（サイズオーバー）
+. メッセージを送信する
+.. 受け取ったメッセージをSigfoxモジュールに渡す（print関数）
+.. \r（ターミネーション）をSigfoxモジュールに渡す（print関数）
+. 応答を受信する
+.. Sigfoxモジュールから到着したメッセージが存在するか確認を行う（available関数の返却値が0より大きい）
+.. 到着したメッセージを読み取る（read関数）
+
+.メッセージ送信機能のシーケンス
+[plantuml]
+----
+@startuml{SendMessage.png}
+
+activate Main
+hide footbox
+
+activate Sigfox
+hide footbox
+
+activate SigfoxModuleHW
+hide footbox
+
+Main -> Sigfox : SendMessage()
+Sigfox -> SigfoxModuleHW : Send Message print(message)
+Sigfox -> SigfoxModuleHW : Send Termination print(\\r)
+Sigfox -> Sigfox : Check Status availabe()
+alt available() > 0
+ Sigfox -> SigfoxModuleHW : Recieve Message read()
+ SigfoxModuleHW -> Sigfox : return read()
+end
+Sigfox -> Main : return
+
+@enduml
+----
+
+=== 終了機能(T.B.D.)
+==== API仕様
+[source, c++]
+----
+bool Finalize(void);
+----
+
+==== 内部シーケンス
+

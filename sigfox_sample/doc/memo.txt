@@ -1,0 +1,14 @@
+システム構成
+・Arduino Uno R3
+・Sigfox Shield for Arduino (UnaShield V2S)	https://soracom.jp/store/5213/
+・SORACOM Air for Sigfox
+
+ピン間接続
+Arduino Uno R3		UnaShield V2S
+4(Tx)		->	4(Rx)
+5(Rx)		<-	5(Tx)
+
+AsciidocのドキュメントをHTMLに変換するコマンド
+asciidoctor softwarestructure.asciidoc -r asciidoctor-diagram -o softwarestructure.html
+
+
